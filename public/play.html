@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14151b">
+<title>UNO · Παίκτης</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Comfortaa:wght@700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/app.css">
+<style>
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body { --tint: #2d3142; background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--tint) 28%, transparent), transparent 70%), var(--bg); transition: background 0.4s; }
+  #app { height: 100%; display: flex; flex-direction: column; }
+
+  #top { display: flex; align-items: center; gap: 10px; padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top)); background: rgba(28, 30, 39, 0.9); border-bottom: 1px solid var(--line); }
+  #top .me { display: flex; align-items: center; gap: 8px; font-weight: 800; flex: 1; min-width: 0; }
+  #top .me span.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #top .stat { font-weight: 800; font-size: 14px; white-space: nowrap; color: var(--muted); }
+  #top .stat b { color: var(--text); }
+
+  #status { padding: 9px 12px; text-align: center; font-weight: 800; font-size: 15px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  #status.myturn { background: linear-gradient(90deg, #1f6b35, #2ea043); color: #fff; }
+  #status.alert { background: linear-gradient(90deg, #8c1d16, var(--red)); color: #fff; }
+
+  #table { display: flex; align-items: center; justify-content: center; gap: 22px; padding: 14px 10px 8px; }
+  #pile { position: relative; cursor: pointer; text-align: center; }
+  #pile .card { width: 64px; }
+  #pile .lbl { font-size: 12px; font-weight: 800; color: var(--muted); margin-top: 4px; }
+  #pile.active .card { animation: nudge 1.2s ease-in-out infinite; }
+  #pile.active .lbl { color: var(--yellow); }
+  @keyframes nudge { 50% { transform: translateY(-5px); } }
+  #topcard { position: relative; }
+  #topcard .card { width: 92px; }
+  #topcard .ring { position: absolute; inset: -9px; border-radius: 16px; border: 5px solid var(--tint); box-shadow: 0 0 22px var(--tint); }
+  #info { display: flex; flex-direction: column; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; color: var(--muted); }
+  #dir { width: 46px; height: 46px; }
+  #dir.ccw { transform: scaleX(-1); }
+
+  #others { display: flex; gap: 8px; overflow-x: auto; padding: 6px 10px 8px; scrollbar-width: none; }
+  #others::-webkit-scrollbar { display: none; }
+  .opp { display: flex; align-items: center; gap: 7px; padding: 6px 10px 6px 6px; border-radius: 22px; background: var(--panel); border: 2px solid transparent; flex: none; font-weight: 700; font-size: 13px; }
+  .opp.current { border-color: var(--yellow); background: #3a3420; }
+  .opp .cnt { background: #0f1015; border-radius: 10px; padding: 1px 7px; font-weight: 800; }
+  .opp .uno { background: var(--red); color: #fff; border-radius: 8px; padding: 1px 6px; font-size: 11px; font-weight: 800; }
+  .opp .uno.forgot { background: var(--yellow); color: #2a2100; animation: blink 0.7s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0.4; } }
+
+  #actions { display: flex; gap: 8px; padding: 4px 10px 6px; min-height: 58px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  #uno-btn { min-width: 110px; font-family: 'Archivo Black', sans-serif; font-size: 20px; letter-spacing: 1px; }
+  #uno-btn.hot { animation: pulse 0.9s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: scale(1.08); box-shadow: 0 0 22px rgba(224, 58, 47, 0.8); } }
+
+  #hand { position: relative; flex: 1; min-height: 150px; margin: 0 6px; padding-bottom: env(safe-area-inset-bottom); }
+  #hand .card { position: absolute; transition: transform 0.15s, filter 0.15s, top 0.15s, left 0.15s; cursor: pointer; }
+  #hand .card.dim { filter: brightness(0.5) saturate(0.6) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45)); }
+  #hand .card.ok { transform: translateY(-10px); }
+  #hand .card.sel { transform: translateY(-30px) scale(1.06); z-index: 50 !important; filter: drop-shadow(0 0 10px #fff) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5)); }
+  #hand .card.new { animation: arrive 0.5s ease-out; }
+  @keyframes arrive { from { transform: translateY(-80px) scale(0.6); opacity: 0; } }
+  #hand .card.shake { animation: shake 0.35s; }
+  @keyframes shake { 25% { margin-left: -6px; } 75% { margin-left: 6px; } }
+  .hand-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+
+  .screen { flex: 1; overflow: auto; padding: 22px 16px; }
+  .screen h1 { font-size: 28px; margin-bottom: 8px; }
+  .members { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+  .member { display: flex; align-items: center; gap: 10px; padding: 11px; background: var(--panel); border-radius: 14px; border: 1px solid var(--line); font-weight: 700; }
+  .member .on { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .member .on.yes { color: var(--ok); }
+  .res-hand { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 10px 40px; }
+  .res-hand .card { width: 30px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div class="me"><span id="me-av"></span><span id="me-name" class="name"></span></div>
+    <div class="stat">Πόντοι <b id="me-score">0</b></div>
+    <div class="stat" id="round-lbl"></div>
+  </header>
+  <div id="status">Σύνδεση…</div>
+  <div id="lobby" class="screen hidden"></div>
+  <div id="game" class="hidden" style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <div id="table">
+      <div id="pile" role="button" aria-label="Τράβα κάρτα"><div id="pile-card"></div><div class="lbl" id="pile-lbl">Τράβα</div></div>
+      <div id="topcard"><div class="ring"></div><div id="topcard-card"></div></div>
+      <div id="info">
+        <svg id="dir" viewBox="0 0 48 48" aria-label="Φορά"><path d="M24 6a18 18 0 1 1-17 12" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M2 14l6 7 6-8z" fill="currentColor"/></svg>
+        <span id="color-lbl"></span>
+      </div>
+    </div>
+    <div id="others"></div>
+    <div id="actions"></div>
+    <div id="hand"></div>
+  </div>
+</div>
+<div id="sheet-root"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/uno-rules.js"></script>
+<script src="/js/cards.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/play.js"></script>
+</body>
+</html>

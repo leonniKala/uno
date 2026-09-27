@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14151b">
+<title>UNO · Τηλεόραση</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Comfortaa:wght@700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/app.css">
+<style>
+  html, body { height: 100%; overflow: hidden; font-size: 1.8vh; }
+  body { --tint: #555; background: radial-gradient(ellipse at 50% 55%, #1c2230, #0b0c10 75%); }
+  #tv { position: absolute; inset: 0; display: flex; flex-direction: column; }
+
+  #bar { display: flex; align-items: center; gap: 2vh; padding: 1.2vh 2.4vh; }
+  #bar .logo-word { font-size: 5vh; }
+  #bar .round { font-size: 2.2vh; font-weight: 800; color: var(--muted); flex: 1; }
+  #bar .round b { color: var(--text); }
+  .codebox { font-weight: 800; font-size: 3vh; letter-spacing: 0.6vh; background: #0f1015; border: 2px solid var(--yellow); color: var(--yellow); border-radius: 1vh; padding: 0.4vh 1.4vh; text-align: center; }
+  .codebox small { display: block; font-size: 1.2vh; letter-spacing: 0.1vh; color: var(--muted); font-weight: 700; }
+
+  #table { position: relative; flex: 1; min-height: 0; }
+  #felt {
+    position: absolute; left: 50%; top: 50%; width: 62vw; height: 56vh; transform: translate(-50%, -50%);
+    border-radius: 50%; background: radial-gradient(ellipse at 50% 40%, #1f6a47, #0f3b27 70%, #0b2a1c);
+    border: 1.2vh solid color-mix(in srgb, var(--tint) 85%, #000);
+    box-shadow: 0 0 6vh color-mix(in srgb, var(--tint) 60%, transparent), inset 0 0 6vh rgba(0, 0, 0, 0.6);
+    transition: border-color 0.5s, box-shadow 0.5s;
+  }
+  #center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 5vh; }
+  #deck { position: relative; text-align: center; }
+  #deck .card { width: 11vh; }
+  #deck .n { font-weight: 800; color: #d9f3e4; font-size: 1.8vh; margin-top: 0.6vh; }
+  #discard { position: relative; width: 17vh; height: 25.5vh; }
+  #discard .card { position: absolute; inset: 0; width: 100%; }
+  #ring { position: absolute; left: 50%; top: 50%; width: 46vh; height: 46vh; transform: translate(-50%, -50%); pointer-events: none; opacity: 0.55; }
+  #ring svg { width: 100%; height: 100%; animation: spin 14s linear infinite; }
+  #ring.ccw svg { animation-direction: reverse; }
+  #ring.fast svg { animation-duration: 1s; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #colorname { position: absolute; left: 50%; top: calc(50% + 17vh); transform: translateX(-50%); font-weight: 800; font-size: 2.2vh; color: #fff; background: rgba(0, 0, 0, 0.45); padding: 0.4vh 1.6vh; border-radius: 3vh; white-space: nowrap; }
+
+  .seat { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 0.6vh; transition: transform 0.3s; }
+  .seat .fan { display: flex; height: 7vh; }
+  .seat .fan .card { width: 4.4vh; margin-left: -3vh; }
+  .seat .fan .card:first-child { margin-left: 0; }
+  .seat .plate { display: flex; align-items: center; gap: 1vh; padding: 0.7vh 1.4vh 0.7vh 0.7vh; border-radius: 4vh; background: rgba(20, 22, 30, 0.92); border: 0.3vh solid transparent; white-space: nowrap; }
+  .seat .avatar { width: 4vh; height: 4vh; font-size: 2vh; }
+  .seat .nm { font-weight: 800; font-size: 2.2vh; }
+  .seat .cnt { font-weight: 800; font-size: 2vh; background: #0f1015; border-radius: 1vh; padding: 0.1vh 0.9vh; }
+  .seat .sc { font-size: 1.5vh; color: var(--muted); font-weight: 700; }
+  .seat.current { transform: translate(-50%, -50%) scale(1.12); z-index: 5; }
+  .seat.current .plate { border-color: var(--yellow); box-shadow: 0 0 2.6vh rgba(244, 194, 13, 0.6); }
+  .seat.dealer .plate::after { content: 'μοιράζει'; font-size: 1.2vh; color: var(--muted); margin-left: 0.4vh; }
+  .seat .flag { position: absolute; top: -1vh; right: -2vh; font-family: 'Archivo Black', sans-serif; font-size: 1.8vh; padding: 0.3vh 0.9vh; border-radius: 1vh; background: var(--red); color: #fff; transform: rotate(8deg); }
+  .seat .flag.forgot { background: var(--yellow); color: #2a2100; font-family: inherit; font-weight: 800; animation: blink 0.7s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0.35; } }
+
+  #banner { margin: 0 auto; padding: 0.9vh 2.6vh; border-radius: 4vh; background: rgba(13, 14, 19, 0.9); border: 0.3vh solid var(--yellow); font-weight: 800; font-size: 2.4vh; white-space: nowrap; display: flex; align-items: center; gap: 1.2vh; }
+  #banner .avatar { width: 3.2vh; height: 3.2vh; font-size: 1.6vh; }
+
+  #log { display: flex; flex-direction: column; gap: 0.4vh; padding: 0.8vh 2.4vh 1.4vh; font-size: 1.7vh; color: var(--muted); min-height: 8vh; }
+  #log div:last-child { color: var(--text); font-weight: 700; }
+
+  /* effects */
+  #fx { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
+  .burst { position: absolute; transform: translate(-50%, -50%); font-family: 'Archivo Black', sans-serif; font-size: 6vh; color: var(--yellow); -webkit-text-stroke: 0.25vh #000; paint-order: stroke; text-shadow: 0.4vh 0.5vh 0 var(--red); animation: burst 1.6s ease-out forwards; white-space: nowrap; }
+  .burst.small { font-size: 4.2vh; }
+  .burst.red { color: #fff; text-shadow: 0.4vh 0.5vh 0 var(--red); }
+  @keyframes burst { 0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; } 15% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; } 70% { transform: translate(-50%, -80%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -110%) scale(1); opacity: 0; } }
+  .flycard { position: absolute; width: 11vh; }
+
+  /* full-screen overlays */
+  .full { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; }
+  #lobby-screen { background: radial-gradient(ellipse at 30% 30%, rgba(40, 20, 20, 0.97), rgba(10, 11, 15, 0.98)); gap: 8vh; }
+  .join-box { text-align: center; }
+  .join-box .logo-word { font-size: 13vh; }
+  .join-box .qr { width: 30vh; height: 30vh; background: #fff; border-radius: 2vh; padding: 1.6vh; margin: 4vh auto 2vh; box-shadow: 0 0 5vh rgba(244, 194, 13, 0.35); }
+  .join-box .qr img { width: 100%; height: 100%; display: block; }
+  .join-box .url { font-size: 2.4vh; color: var(--muted); font-weight: 600; }
+  .join-box .bigcode { font-size: 9vh; font-weight: 800; letter-spacing: 2vh; margin-top: 1vh; padding-left: 2vh; }
+  .joined { min-width: 44vh; }
+  .joined h2 { font-size: 4vh; margin-bottom: 1vh; }
+  .joined .tgt { color: var(--muted); font-size: 2.2vh; margin-bottom: 2vh; font-weight: 700; }
+  .joined .list { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2vh; }
+  .joined .m { display: flex; align-items: center; gap: 1.4vh; font-size: 2.8vh; font-weight: 800; padding: 1.2vh 1.6vh; background: rgba(35, 38, 51, 0.9); border-radius: 1.4vh; border: 1px solid var(--line); animation: popin 0.4s ease-out; }
+  .joined .m .avatar { width: 4.4vh; height: 4.4vh; font-size: 2.2vh; }
+  .joined .m.off { opacity: 0.5; }
+  @keyframes popin { from { transform: scale(0.8); opacity: 0; } }
+  .joined .wait { font-size: 2.2vh; color: var(--muted); margin-top: 3vh; }
+
+  #results-screen { background: rgba(6, 7, 10, 0.78); }
+  .res { background: rgba(28, 30, 39, 0.97); border: 0.4vh solid var(--yellow); border-radius: 2.4vh; padding: 3.4vh 4.4vh; min-width: 64vw; max-height: 92vh; overflow: hidden; box-shadow: 0 3vh 8vh rgba(0, 0, 0, 0.6); }
+  .res h1 { font-size: 6vh; text-align: center; }
+  .res .sub { text-align: center; font-size: 2.6vh; color: var(--muted); font-weight: 700; margin: 1vh 0 3vh; }
+  .res table { width: 100%; border-collapse: collapse; font-size: 2.6vh; }
+  .res th { font-size: 1.7vh; color: var(--muted); text-transform: uppercase; letter-spacing: 0.15vh; padding: 1vh; text-align: right; }
+  .res td { padding: 1.1vh 1vh; text-align: right; border-top: 1px solid var(--line); font-weight: 700; vertical-align: middle; }
+  .res th:nth-child(2), .res td:nth-child(2) { text-align: left; }
+  .res td .who { display: inline-flex; align-items: center; gap: 1.2vh; }
+  .res td .avatar { width: 3.6vh; height: 3.6vh; font-size: 1.8vh; }
+  .res tr.first td { color: var(--yellow); font-size: 3vh; }
+  .res .left { display: flex; gap: 0.4vh; justify-content: flex-end; flex-wrap: wrap; }
+  .res .left .card { width: 3.4vh; }
+  .res .hint { text-align: center; color: var(--muted); font-size: 2vh; margin-top: 2.6vh; }
+
+  #code-screen { background: var(--bg); flex-direction: column; gap: 3vh; }
+  #code-screen input { font-size: 6vh; width: 34vh; text-align: center; letter-spacing: 2vh; height: 10vh; border-radius: 1.6vh; border: 2px solid var(--yellow); background: #0f1015; color: #fff; }
+  #code-screen .btn { font-size: 2.6vh; min-height: 7vh; padding: 0 5vh; }
+</style>
+</head>
+<body>
+<div id="tv" class="hidden">
+  <div id="bar">
+    <span class="logo-word">UNO</span>
+    <div class="round" id="round"></div>
+    <div id="banner" class="hidden"></div>
+    <div class="round"></div>
+    <div class="codebox"><small>κωδικός</small><span id="code-lbl"></span></div>
+  </div>
+  <div id="table">
+    <div id="felt"></div>
+    <div id="ring"><svg viewBox="0 0 100 100"><g fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round">
+      <path d="M50 4 A46 46 0 0 1 93 36"/><path d="M96 58 A46 46 0 0 1 60 95"/><path d="M40 95 A46 46 0 0 1 5 60"/><path d="M7 36 A46 46 0 0 1 40 5"/></g>
+      <g fill="#fff"><path d="M93 36 l-5 -1 l6 -5z"/><path d="M60 95 l2 -5 l3 6z"/><path d="M5 60 l5 1 l-6 5z"/><path d="M40 5 l-2 5 l-3 -6z"/></g></svg></div>
+    <div id="center">
+      <div id="deck"><div id="deck-card"></div><div class="n" id="deck-n"></div></div>
+      <div id="discard"></div>
+    </div>
+    <div id="colorname"></div>
+    <div id="seats"></div>
+    <div id="fx"></div>
+  </div>
+  <div id="log"></div>
+</div>
+<div id="lobby-screen" class="full hidden"></div>
+<div id="results-screen" class="full hidden"></div>
+<form id="code-screen" class="full hidden">
+  <span class="logo-word" style="font-size:10vh">UNO</span>
+  <div class="muted" style="font-size:2.4vh">Γράψε τον κωδικό του παιχνιδιού</div>
+  <input id="code-in" inputmode="numeric" maxlength="4" autocomplete="off">
+  <button class="btn primary" type="submit">Σύνδεση</button>
+  <div id="code-err" style="color:#ffb4ab;font-size:2.2vh;min-height:3vh"></div>
+</form>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/cards.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/tv.js"></script>
+</body>
+</html>

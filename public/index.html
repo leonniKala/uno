@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14151b">
+<title>UNO · Είσοδος</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Comfortaa:wght@700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/app.css">
+<style>
+  body {
+    min-height: 100%;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(224, 58, 47, 0.35), transparent 40%),
+      radial-gradient(circle at 90% 20%, rgba(30, 111, 217, 0.35), transparent 40%),
+      radial-gradient(circle at 20% 95%, rgba(46, 160, 67, 0.3), transparent 40%),
+      radial-gradient(circle at 90% 90%, rgba(244, 194, 13, 0.25), transparent 40%),
+      var(--bg);
+    display: flex; justify-content: center; padding: 26px 16px;
+  }
+  .wrap { width: 100%; max-width: 420px; }
+  .logo { text-align: center; margin: 6px 0 26px; }
+  .logo .logo-word { font-size: 68px; }
+  .fan { display: flex; justify-content: center; margin: -8px 0 10px; height: 70px; }
+  .fan .card { width: 44px; margin: 0 -8px; }
+  .panel { background: rgba(35, 38, 51, 0.92); border: 1px solid var(--line); border-radius: 18px; padding: 20px 18px; box-shadow: var(--shadow); }
+  .code-input { letter-spacing: 12px; text-align: center; font-size: 30px !important; font-weight: 800; height: 60px !important; }
+  .resume { margin-bottom: 16px; display: flex; flex-direction: column; }
+  .foot { text-align: center; margin-top: 22px; font-size: 13px; }
+  .foot a { color: var(--muted); margin: 0 10px; }
+  .err { color: #ffb4ab; font-weight: 600; min-height: 20px; margin: 4px 0 10px; }
+  .players-in { font-size: 13px; color: var(--muted); margin: -6px 0 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo"><div class="fan" id="fan"></div><span class="logo-word">UNO</span></div>
+  <div id="resume" class="resume hidden"></div>
+  <form id="form" class="panel" autocomplete="off">
+    <div class="field">
+      <label for="code">Κωδικός παιχνιδιού</label>
+      <input id="code" class="code-input" inputmode="numeric" pattern="\d{4}" maxlength="4" required placeholder="····">
+    </div>
+    <div id="players-in" class="players-in"></div>
+    <div class="field">
+      <label for="name">Όνομα</label>
+      <input id="name" maxlength="14" required placeholder="π.χ. Μαρία" autocapitalize="words">
+    </div>
+    <div class="field">
+      <label for="pin">PIN (4 ψηφία, για να ξαναμπείς αν κλείσει το κινητό)</label>
+      <input id="pin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" required placeholder="····">
+    </div>
+    <div id="err" class="err"></div>
+    <button class="btn primary" style="width:100%" type="submit">Μπες στο παιχνίδι</button>
+  </form>
+  <div class="foot"><a href="/tv">Οθόνη τηλεόρασης</a><a href="/admin">Admin</a></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/cards.js"></script>
+<script src="/js/common.js"></script>
+<script>
+(function () {
+  const { h } = UNO;
+  const socket = UNO.connect();
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+
+  [['red', '7'], ['yellow', 'skip'], ['wild', 'wild'], ['green', 'reverse'], ['blue', 'draw2']].forEach(([color, value], i) => {
+    const c = UnoCards.el({ color, value });
+    c.style.transform = `rotate(${(i - 2) * 12}deg) translateY(${Math.abs(i - 2) * 5}px)`;
+    $('fan').append(c);
+  });
+
+  let peekTimer;
+  async function peek() {
+    const code = $('code').value.trim();
+    $('players-in').textContent = '';
+    if (!/^\d{4}$/.test(code)) return;
+    try {
+      const r = await socket.request('peek', { code });
+      $('players-in').textContent = r.members.length
+        ? 'Μέσα: ' + r.members.map((m) => m.name).join(', ') + (r.phase !== 'lobby' ? ' · έχει ξεκινήσει' : '')
+        : 'Είσαι ο πρώτος παίκτης!';
+      $('err').textContent = '';
+    } catch (e) {
+      $('err').textContent = e.message;
+    }
+  }
+  $('code').addEventListener('input', () => { clearTimeout(peekTimer); peekTimer = setTimeout(peek, 250); });
+
+  const last = UNO.playerSession.get();
+  if (last && last.code) {
+    $('resume').classList.remove('hidden');
+    $('resume').append(h('a', { class: 'btn yellow', href: `/play?code=${last.code}` }, `Συνέχεια: ${last.name || 'παίκτης'} · παιχνίδι ${last.code}`));
+  }
+  $('code').value = params.get('code') || (last && last.code) || '';
+  socket.on('connect', peek);
+
+  $('form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    $('err').textContent = '';
+    const code = $('code').value.trim(), name = $('name').value.trim(), pin = $('pin').value.trim();
+    try {
+      const r = await socket.request('join', { code, name, pin });
+      UNO.playerSession.set({ code: r.code, token: r.token, name });
+      location.href = `/play?code=${r.code}`;
+    } catch (e) {
+      $('err').textContent = e.message;
+    }
+  });
+})();
+</script>
+</body>
+</html>
